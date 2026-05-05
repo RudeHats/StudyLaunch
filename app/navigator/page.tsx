@@ -1,416 +1,574 @@
-'use client'
+"use client";
 
-import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence, useInView } from 'framer-motion'
-import Link from 'next/link'
-import { Navigation } from '@/components/navigation'
-import { Footer } from '@/components/footer'
+import { useState, useRef, useEffect } from "react";
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useSpring,
+} from "framer-motion";
+import {
+  Search,
+  Sparkles,
+  ArrowUpRight,
+  Filter,
+  Upload,
+  FileText,
+  X,
+  Send,
+  ChevronDown,
+  Bot,
+  User,
+  Loader2,
+  CheckCircle2,
+  Globe2,
+  GraduationCap,
+  Wallet,
+  CalendarDays,
+  Award,
+  Languages,
+} from "lucide-react";
+import PageShell from "@/components/site/PageShell";
 
-interface Message {
-  id: string
-  type: 'user' | 'ai' | 'options' | 'results'
-  content: string
-  options?: string[]
-  results?: UniversityMatch[]
-}
+const expoOut: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-interface UniversityMatch {
-  name: string
-  program: string
-  location: string
-  match: number
-  tuition: string
-  deadline: string
-  highlights: string[]
-}
+/* ============== DATA ============== */
+const programs = [
+  { name: "MSc Computer Science",     uni: "University of Oxford",       country: "UK",          fit: 96, fee: "₹62L", dur: "12 mo", tag: "Reach",    flag: "🇬🇧", img: "https://images.unsplash.com/photo-1606761568499-6d2451b23c66?w=900&q=80&auto=format&fit=crop" },
+  { name: "MS Computer Science",      uni: "Stanford University",        country: "USA",         fit: 88, fee: "₹78L", dur: "21 mo", tag: "Reach",    flag: "🇺🇸", img: "https://images.unsplash.com/photo-1568667256549-094345857637?w=900&q=80&auto=format&fit=crop" },
+  { name: "MS Data Science",          uni: "ETH Zürich",                 country: "Switzerland", fit: 92, fee: "₹18L", dur: "18 mo", tag: "Best fit", flag: "🇨🇭", img: "https://images.unsplash.com/photo-1564981797816-1043664bf78d?w=900&q=80&auto=format&fit=crop" },
+  { name: "MEng Computer Engineering", uni: "University of Toronto",     country: "Canada",      fit: 90, fee: "₹42L", dur: "16 mo", tag: "Best fit", flag: "🇨🇦", img: "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=900&q=80&auto=format&fit=crop" },
+  { name: "MSc AI",                    uni: "Imperial College London",   country: "UK",          fit: 84, fee: "₹54L", dur: "12 mo", tag: "Match",    flag: "🇬🇧", img: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=900&q=80&auto=format&fit=crop" },
+  { name: "MSc Computing",             uni: "NUS Singapore",             country: "Singapore",   fit: 89, fee: "₹28L", dur: "18 mo", tag: "Match",    flag: "🇸🇬", img: "https://images.unsplash.com/photo-1567592551488-aa01ddc2a5d2?w=900&q=80&auto=format&fit=crop" },
+];
 
-const sampleMatches: UniversityMatch[] = [
-  {
-    name: 'Stanford University',
-    program: 'MS Computer Science',
-    location: 'California, USA',
-    match: 94,
-    tuition: '$58,000/yr',
-    deadline: 'Dec 5, 2025',
-    highlights: ['AI/ML Focus', 'Strong Research', 'Silicon Valley Network'],
-  },
-  {
-    name: 'Carnegie Mellon University',
-    program: 'MS Human-Computer Interaction',
-    location: 'Pittsburgh, USA',
-    match: 89,
-    tuition: '$52,000/yr',
-    deadline: 'Dec 15, 2025',
-    highlights: ['Top HCI Program', 'Industry Connections', 'Design Focus'],
-  },
-  {
-    name: 'MIT',
-    program: 'MS Media Lab',
-    location: 'Massachusetts, USA',
-    match: 82,
-    tuition: '$55,000/yr',
-    deadline: 'Dec 1, 2025',
-    highlights: ['Interdisciplinary', 'Innovation Focus', 'Research Heavy'],
-  },
-  {
-    name: 'UC Berkeley',
-    program: 'MS EECS',
-    location: 'California, USA',
-    match: 78,
-    tuition: '$44,000/yr',
-    deadline: 'Dec 8, 2025',
-    highlights: ['Bay Area Access', 'Research Excellence', 'Lower Cost'],
-  },
-]
+const filterDefs = [
+  { key: "country",     label: "Country",       icon: Globe2,        opts: ["Any", "USA", "UK", "Canada", "Germany", "Australia", "Switzerland", "Singapore"] },
+  { key: "degree",      label: "Degree",        icon: GraduationCap, opts: ["Any", "MS", "MBA", "MEng", "MSc", "PhD"] },
+  { key: "field",       label: "Field",         icon: Sparkles,      opts: ["Any", "CS / AI", "Data Science", "Engineering", "Business", "Public Policy", "Design"] },
+  { key: "budget",      label: "Budget",        icon: Wallet,        opts: ["Any", "<₹25L", "₹25–50L", "₹50–75L", "₹75L+"] },
+  { key: "intake",      label: "Intake",        icon: CalendarDays,  opts: ["Any", "Fall 2026", "Spring 2026", "Fall 2027"] },
+  { key: "test",        label: "Test waiver",   icon: Languages,     opts: ["Any", "GRE optional", "GMAT optional", "Test mandatory"] },
+  { key: "scholarship", label: "Scholarship",   icon: Award,         opts: ["Any", "Merit", "Need-based", "Diversity", "Research stipend"] },
+] as const;
 
-const conversationFlow = [
-  {
-    question: "Welcome to NeuroMatch Navigator. What degree are you pursuing?",
-    options: ["Master's (MS/MA)", "MBA", "PhD", "Undergraduate"],
-  },
-  {
-    question: "What field are you most interested in?",
-    options: ["Computer Science", "Data Science", "Business Analytics", "Engineering", "Design", "Finance"],
-  },
-  {
-    question: "What's your GRE/GMAT score range?",
-    options: ["320+ GRE", "310-319 GRE", "700+ GMAT", "650-699 GMAT", "Not taken yet"],
-  },
-  {
-    question: "What's your budget range for total program cost?",
-    options: ["< $50,000", "$50,000 - $80,000", "$80,000 - $120,000", "No budget constraint"],
-  },
-  {
-    question: "Which regions are you most interested in?",
-    options: ["USA", "UK", "Canada", "Germany", "Australia", "Multiple regions"],
-  },
-]
+const ingestionStages = [
+  "Parsing PDF structure",
+  "Extracting entities · skills · roles",
+  "Embedding semantic vectors",
+  "Matching against 1,248 programs",
+  "Scoring fit · cost · admit odds",
+  "Ranking shortlist",
+];
 
-function MatchCard({ match, index }: { match: UniversityMatch; index: number }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true })
-  const [isExpanded, setIsExpanded] = useState(false)
+/* ============== EMPTY STATE — DROPZONE ============== */
+function DropZone({ onFile }: { onFile: (f: File) => void }) {
+  const [drag, setDrag] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 30, scale: 0.95 }}
-      animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="glass rounded-xl border border-white/10 overflow-hidden hover:border-burgundy/30 transition-all group"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, ease: expoOut }}
+      className="mx-auto max-w-2xl"
     >
-      <div 
-        className="p-5 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
+      <div
+        onDragOver={e => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={e => {
+          e.preventDefault(); setDrag(false);
+          const f = e.dataTransfer.files?.[0];
+          if (f) onFile(f);
+        }}
+        onClick={() => inputRef.current?.click()}
+        className={`relative cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed p-12 text-center transition-all ${
+          drag
+            ? "border-[hsl(var(--accent))] bg-[hsl(var(--accent-soft))] scale-[1.01]"
+            : "border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--accent))] hover:shadow-elev"
+        }`}
+        data-testid="navigator-dropzone"
       >
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h4 className="text-lg font-semibold text-cream mb-1">{match.name}</h4>
-            <p className="text-sm text-grey">{match.program}</p>
-            <p className="text-xs text-grey/60">{match.location}</p>
-          </div>
-          <div className="text-right">
-            <div className={`text-2xl font-bold ${
-              match.match >= 90 ? 'text-gold' : 
-              match.match >= 80 ? 'text-burgundy' : 
-              'text-grey'
-            }`}>
-              {match.match}%
-            </div>
-            <div className="text-xs text-grey">match</div>
-          </div>
+        <motion.div
+          animate={{ y: drag ? -6 : 0 }}
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-ink"
+        >
+          <Upload className="h-7 w-7" />
+        </motion.div>
+        <h3 className="mt-5 font-display text-2xl font-bold">Drop your resume to begin.</h3>
+        <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
+          PDF · DOCX · LinkedIn export. We'll extract every relevant signal in seconds.
+        </p>
+        <button className="mt-5 inline-flex items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-5 py-2.5 text-sm font-medium text-[hsl(var(--accent-foreground))]">
+          Browse files <ArrowUpRight className="h-3.5 w-3.5" />
+        </button>
+        <div className="mt-5 flex items-center justify-center gap-4 font-mono text-[10px] uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">
+          <span>· On-device parsing</span>
+          <span>· DPDP-safe</span>
+          <span>· ChromaDB embeddings</span>
         </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".pdf,.docx,.doc"
+          onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); }}
+          className="hidden"
+          data-testid="navigator-file-input"
+        />
+      </div>
+    </motion.div>
+  );
+}
 
-        {/* Match bar */}
-        <div className="h-2 bg-navy-light rounded-full overflow-hidden mb-4">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={isInView ? { width: `${match.match}%` } : {}}
-            transition={{ duration: 1, delay: index * 0.1 + 0.3 }}
-            className={`h-full rounded-full ${
-              match.match >= 90 ? 'bg-gradient-to-r from-gold to-gold-dim' : 
-              match.match >= 80 ? 'bg-gradient-to-r from-burgundy to-burgundy-dark' : 
-              'bg-grey'
-            }`}
-          />
-        </div>
+/* ============== INGESTION THEATRE ============== */
+function IngestionTheatre({ file, onDone }: { file: File; onDone: () => void }) {
+  const [stage, setStage] = useState(0);
+  const [progress, setProgress] = useState(0);
 
-        {/* Highlights */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {match.highlights.map((highlight) => (
-            <span 
-              key={highlight}
-              className="px-2 py-1 text-xs bg-burgundy/10 text-burgundy rounded"
-            >
-              {highlight}
-            </span>
-          ))}
-        </div>
+  useEffect(() => {
+    let s = 0;
+    const stageT = setInterval(() => {
+      s += 1;
+      if (s >= ingestionStages.length) { clearInterval(stageT); setTimeout(onDone, 500); }
+      else setStage(s);
+    }, 600);
+    let p = 0;
+    const progT = setInterval(() => {
+      p = Math.min(100, p + 100 / (ingestionStages.length * 24));
+      setProgress(p);
+      if (p >= 100) clearInterval(progT);
+    }, 25);
+    return () => { clearInterval(stageT); clearInterval(progT); };
+  }, [onDone]);
 
-        {/* Quick info */}
-        <div className="flex justify-between text-sm">
-          <span className="text-grey">Tuition: <span className="text-cream">{match.tuition}</span></span>
-          <span className="text-grey">Deadline: <span className="text-gold">{match.deadline}</span></span>
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mx-auto max-w-2xl rounded-3xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-8 shadow-elev-lg"
+      data-testid="ingestion-theatre"
+    >
+      <div className="flex items-center gap-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[hsl(var(--accent-soft))]">
+          <FileText className="h-5 w-5 text-[hsl(var(--primary))]" />
         </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium">{file.name}</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">{(file.size / 1024).toFixed(1)} KB</div>
+        </div>
+        <span className="font-mono text-xs tabular-nums text-[hsl(var(--accent))]">{Math.round(progress)}%</span>
       </div>
 
-      {/* Expanded content */}
+      <div className="mt-4 h-1 overflow-hidden rounded-full bg-[hsl(var(--muted))]">
+        <motion.div
+          className="h-full bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(var(--primary))]"
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.1, ease: "linear" }}
+        />
+      </div>
+
+      <ul className="mt-6 space-y-3">
+        {ingestionStages.map((s, i) => {
+          const done = i < stage;
+          const cur  = i === stage;
+          return (
+            <motion.li
+              key={s}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: i * 0.05 }}
+              className="flex items-center gap-3"
+            >
+              {done
+                ? <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
+                : cur
+                  ? <Loader2 className="h-4 w-4 animate-spin text-[hsl(var(--accent))]" />
+                  : <span className="h-4 w-4 rounded-full border border-[hsl(var(--border))]" />}
+              <span className={`text-sm ${done ? "text-[hsl(var(--muted-foreground))] line-through" : cur ? "text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))]/50"}`}>{s}</span>
+              {cur && (
+                <motion.span
+                  className="ml-auto inline-flex gap-0.5"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  {[0,1,2].map(d => (
+                    <motion.span key={d} className="h-1 w-1 rounded-full bg-[hsl(var(--accent))]"
+                      animate={{ opacity: [0.2, 1, 0.2] }}
+                      transition={{ duration: 0.9, repeat: Infinity, delay: d * 0.15 }} />
+                  ))}
+                </motion.span>
+              )}
+            </motion.li>
+          );
+        })}
+      </ul>
+    </motion.div>
+  );
+}
+
+/* ============== FILTER DROPDOWN ============== */
+function FilterDropdown({ def, value, onChange }: any) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const active = value && value !== "Any";
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        data-testid={`filter-${def.key}`}
+        className={`group inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
+          active
+            ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+            : "border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--foreground))]/40"
+        }`}
+      >
+        <def.icon className="h-3.5 w-3.5" />
+        <span className="font-medium">{def.label}</span>
+        {active && <span className="font-mono text-[10px] opacity-80">· {value}</span>}
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
       <AnimatePresence>
-        {isExpanded && (
+        {open && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="border-t border-white/10"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="absolute left-0 top-full z-30 mt-2 w-52 overflow-hidden rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-elev-lg"
           >
-            <div className="p-5 space-y-4">
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex-1 py-2.5 bg-burgundy text-cream rounded-lg font-medium text-sm"
-                >
-                  Add to Shortlist
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex-1 py-2.5 border border-cream/20 text-cream rounded-lg font-medium text-sm"
-                >
-                  View Details
-                </motion.button>
-              </div>
-              <Link 
-                href="/oracle"
-                className="block w-full py-2.5 text-center bg-gold/10 text-gold rounded-lg font-medium text-sm hover:bg-gold/20 transition-colors"
+            {def.opts.map((o: string) => (
+              <button
+                key={o}
+                onClick={() => { onChange(o); setOpen(false); }}
+                className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--muted))] ${value === o ? "text-[hsl(var(--accent))]" : ""}`}
               >
-                Check Admit Probability in Oracle
-              </Link>
-            </div>
+                {o}
+                {value === o && <CheckCircle2 className="h-3.5 w-3.5" />}
+              </button>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
-  )
+    </div>
+  );
 }
 
-export default function NavigatorPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      type: 'ai',
-      content: conversationFlow[0].question,
-      options: conversationFlow[0].options,
-    },
-  ])
-  const [currentStep, setCurrentStep] = useState(0)
-  const [isTyping, setIsTyping] = useState(false)
-  const [showResults, setShowResults] = useState(false)
-  const chatEndRef = useRef<HTMLDivElement>(null)
+/* ============== CHAT PANEL ============== */
+type Msg = { role: "user" | "assistant"; text: string };
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+const cannedReplies = [
+  "Based on your resume, your strongest signals are systems engineering and a 2.8B-API-call rate-limiter at scale. I've prioritised programs with strong distributed-systems faculty.",
+  "Oxford and ETH Zürich are your best-fit shortlist. Stanford is a stretch given the funding-light profile — would you like me to model a co-signer-free loan?",
+  "I can re-rank by stipend availability. Want me to filter for programs with research-assistantship guarantees?",
+  "Interesting — your GitHub shows strong open-source contributions. ETH Zürich's MS DS values that more than your GRE delta. Shifting it to your top spot.",
+];
 
-  const handleOptionSelect = async (option: string) => {
-    // Add user message
-    setMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      type: 'user',
-      content: option,
-    }])
+function ChatPanel() {
+  const [msgs, setMsgs] = useState<Msg[]>([
+    { role: "assistant", text: "Resume ingested. I see 4 high-fit programs in the right rail. Want me to walk through the trade-offs, or filter further?" },
+  ]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
 
-    setIsTyping(true)
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, busy]);
 
-    // Simulate AI thinking
-    await new Promise(resolve => setTimeout(resolve, 800))
+  const send = async () => {
+    if (!input.trim() || busy) return;
+    const userMsg = input.trim();
+    setMsgs(m => [...m, { role: "user", text: userMsg }]);
+    setInput("");
+    setBusy(true);
 
-    const nextStep = currentStep + 1
+    let reply = cannedReplies[Math.floor(Math.random() * cannedReplies.length)];
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMsg, history: msgs }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.reply) reply = data.reply;
+      }
+    } catch { /* fall back to canned reply */ }
 
-    if (nextStep < conversationFlow.length) {
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: conversationFlow[nextStep].question,
-        options: conversationFlow[nextStep].options,
-      }])
-      setCurrentStep(nextStep)
-    } else {
-      // Show analyzing message
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: "Analyzing your profile against 12,000+ programs...",
-      }])
+    // simulate streaming feel
+    await new Promise(r => setTimeout(r, 700));
+    setMsgs(m => [...m, { role: "assistant", text: reply }]);
+    setBusy(false);
+  };
 
-      // Simulate analysis
-      await new Promise(resolve => setTimeout(resolve, 2000))
-
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 2).toString(),
-        type: 'ai',
-        content: "I've found your top matches based on your profile. Here are the universities with the highest probability of admission:",
-      }])
-
-      setShowResults(true)
-    }
-
-    setIsTyping(false)
-  }
+  const suggestions = [
+    "Filter to scholarship-eligible only",
+    "Show me cheaper alternatives in Europe",
+    "Compare Oxford vs ETH on outcomes",
+  ];
 
   return (
-    <main className="relative min-h-screen bg-navy">
-      <Navigation />
-      
-      {/* Hero */}
-      <section className="relative pt-32 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-burgundy/10 via-transparent to-transparent" />
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-burgundy/20 rounded-full blur-[150px]" />
-        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gold/10 rounded-full blur-[120px]" />
-        
-        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+    <div className="flex h-[calc(100vh-220px)] min-h-[560px] flex-col rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-elev" data-testid="chat-panel">
+      {/* header */}
+      <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] p-4">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
+          <Bot className="h-4 w-4" />
+        </div>
+        <div>
+          <div className="font-medium">Navigator</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">Agentic · Groq llama-3.3-70b</div>
+        </div>
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[hsl(var(--success-soft))] px-2.5 py-0.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--success))]" />
+          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[hsl(var(--success))]">Online</span>
+        </span>
+      </div>
+
+      {/* messages */}
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {msgs.map((m, i) => (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            key={i}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.4, ease: expoOut }}
+            className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}
           >
-            <span className="inline-block px-4 py-1.5 text-xs font-medium text-burgundy bg-burgundy/10 rounded-full mb-4">
-              NeuroMatch Navigator
-            </span>
-            <h1 className="text-4xl md:text-5xl font-bold text-cream mb-4">
-              Find your perfect{' '}
-              <span className="font-serif italic text-gold">university match.</span>
-            </h1>
-            <p className="text-lg text-grey max-w-2xl mx-auto">
-              Answer a few questions and our AI will match you with programs tailored to your profile, goals, and constraints.
-            </p>
+            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${m.role === "user" ? "bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]" : "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"}`}>
+              {m.role === "user" ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
+            </div>
+            <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${m.role === "user" ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]" : "bg-[hsl(var(--surface))] text-[hsl(var(--foreground))]"}`}>
+              {m.text}
+            </div>
           </motion.div>
-        </div>
-      </section>
-
-      {/* Chat Interface */}
-      <section className="relative pb-32">
-        <div className="max-w-3xl mx-auto px-6">
-          <div className="glass rounded-2xl border border-white/10 overflow-hidden">
-            {/* Chat header */}
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-white/10 bg-navy-light/30">
-              <div className="w-10 h-10 rounded-full bg-burgundy/20 flex items-center justify-center">
-                <svg className="w-5 h-5 text-burgundy" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-cream">NeuroMatch AI</h3>
-                <div className="flex items-center gap-2 text-xs text-grey">
-                  <span className="w-2 h-2 bg-gold rounded-full animate-pulse" />
-                  Online - Ready to match
-                </div>
-              </div>
+        ))}
+        {busy && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
+              <Bot className="h-3.5 w-3.5" />
             </div>
-
-            {/* Chat messages */}
-            <div className="p-6 space-y-6 max-h-[500px] overflow-y-auto">
-              {messages.map((message, i) => (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {message.type === 'user' ? (
-                    <div className="max-w-[80%] px-4 py-3 bg-burgundy text-cream rounded-2xl rounded-br-sm">
-                      {message.content}
-                    </div>
-                  ) : (
-                    <div className="max-w-[80%] space-y-3">
-                      <div className="px-4 py-3 bg-navy-light/50 text-cream rounded-2xl rounded-bl-sm">
-                        {message.content}
-                      </div>
-                      {message.options && (
-                        <div className="flex flex-wrap gap-2">
-                          {message.options.map((option) => (
-                            <motion.button
-                              key={option}
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={() => handleOptionSelect(option)}
-                              className="px-4 py-2 bg-burgundy/10 text-burgundy border border-burgundy/30 rounded-full text-sm hover:bg-burgundy/20 transition-colors"
-                            >
-                              {option}
-                            </motion.button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-
-              {/* Typing indicator */}
-              {isTyping && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex gap-1 px-4 py-3 bg-navy-light/50 rounded-2xl rounded-bl-sm w-fit"
-                >
-                  <span className="w-2 h-2 bg-grey rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 bg-grey rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 bg-grey rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </motion.div>
-              )}
-
-              <div ref={chatEndRef} />
+            <div className="rounded-2xl bg-[hsl(var(--surface))] px-4 py-3">
+              <span className="inline-flex gap-1">
+                {[0,1,2].map(d => (
+                  <motion.span key={d} className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--muted-foreground))]"
+                    animate={{ opacity: [0.2, 1, 0.2] }}
+                    transition={{ duration: 1, repeat: Infinity, delay: d * 0.15 }} />
+                ))}
+              </span>
             </div>
+          </motion.div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {/* suggestions */}
+      <div className="flex flex-wrap gap-2 border-t border-[hsl(var(--border))] px-4 py-3">
+        {suggestions.map(s => (
+          <button
+            key={s}
+            onClick={() => setInput(s)}
+            className="rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {/* composer */}
+      <div className="flex items-center gap-2 border-t border-[hsl(var(--border))] p-3">
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && send()}
+          placeholder="Ask Navigator anything…"
+          className="flex-1 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-2.5 text-sm outline-none focus:border-[hsl(var(--accent))]"
+          data-testid="chat-input"
+        />
+        <button
+          onClick={send}
+          disabled={!input.trim() || busy}
+          data-testid="chat-send"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-shadow hover:shadow-glow disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============== PAGE ============== */
+export default function Navigator() {
+  const [phase, setPhase] = useState<"idle" | "ingest" | "ready">("idle");
+  const [file, setFile] = useState<File | null>(null);
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+
+  const filtered = programs.filter(p => {
+    if (search && !`${p.name} ${p.uni}`.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filters.country && filters.country !== "Any" && p.country !== filters.country) return false;
+    return true;
+  });
+
+  return (
+    <PageShell>
+      {/* HERO */}
+      <section className="border-b border-[hsl(var(--border))] bg-[hsl(var(--surface))]/60 py-12">
+        <div className="mx-auto max-w-7xl px-6">
+          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-[hsl(var(--muted-foreground))]">Surface 01 · Navigator</span>
+          <h1 className="mt-3 max-w-3xl font-display text-4xl font-bold leading-[1.05] md:text-6xl">
+            Your shortlist, <span className="italic text-gradient-ink">tuned by AI.</span>
+          </h1>
+          <p className="mt-4 max-w-2xl text-lg text-[hsl(var(--muted-foreground))]">
+            Profile-aware program matching across 1,200+ graduate programs in 18 countries.
+          </p>
+          <div className="mt-6 grid grid-cols-3 gap-4 max-w-xl">
+            {[["1,248", "Programs"], ["18", "Countries"], ["96%", "Match accuracy"]].map(([v, l]) => (
+              <div key={l} className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 text-center">
+                <div className="font-display text-xl font-bold">{v}</div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">{l}</div>
+              </div>
+            ))}
           </div>
-
-          {/* Results */}
-          <AnimatePresence>
-            {showResults && (
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className="mt-8 space-y-6"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-cream">Your Top Matches</h3>
-                  <span className="text-sm text-grey">{sampleMatches.length} programs found</span>
-                </div>
-                
-                <div className="grid gap-4">
-                  {sampleMatches.map((match, i) => (
-                    <MatchCard key={match.name} match={match} index={i} />
-                  ))}
-                </div>
-
-                <div className="flex gap-4">
-                  <button className="flex-1 py-3 bg-gold text-navy font-semibold rounded-xl hover:bg-gold-dim transition-colors">
-                    Save All to Shortlist
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setMessages([{
-                        id: '1',
-                        type: 'ai',
-                        content: conversationFlow[0].question,
-                        options: conversationFlow[0].options,
-                      }])
-                      setCurrentStep(0)
-                      setShowResults(false)
-                    }}
-                    className="px-6 py-3 border border-cream/20 text-cream font-medium rounded-xl hover:bg-cream/5 transition-colors"
-                  >
-                    Start Over
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </section>
 
-      <Footer />
-    </main>
-  )
+      {/* PHASES */}
+      <section className="mx-auto max-w-7xl px-6 py-16">
+        <AnimatePresence mode="wait">
+          {phase === "idle" && (
+            <motion.div key="idle" exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.4 }}>
+              <DropZone onFile={f => { setFile(f); setPhase("ingest"); }} />
+            </motion.div>
+          )}
+
+          {phase === "ingest" && file && (
+            <motion.div key="ingest" exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.4 }}>
+              <IngestionTheatre file={file} onDone={() => setPhase("ready")} />
+            </motion.div>
+          )}
+
+          {phase === "ready" && (
+            <motion.div
+              key="ready"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: expoOut }}
+            >
+              {/* search + filters bar */}
+              <div className="mb-6 flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[280px]">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+                  <input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search programs · universities · cities"
+                    className="w-full rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-3 pl-11 pr-16 text-sm outline-none focus:border-[hsl(var(--accent))]"
+                    data-testid="navigator-search"
+                  />
+                  <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 font-mono text-[10px] text-[hsl(var(--muted-foreground))]">⌘K</kbd>
+                </div>
+                <button
+                  onClick={() => setFilters({})}
+                  className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2 text-sm hover:bg-[hsl(var(--muted))]"
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  Reset
+                </button>
+              </div>
+
+              <div className="mb-8 flex flex-wrap gap-2" data-testid="filters-bar">
+                {filterDefs.map(def => (
+                  <FilterDropdown
+                    key={def.key}
+                    def={def}
+                    value={filters[def.key] ?? "Any"}
+                    onChange={(v: string) => setFilters(f => ({ ...f, [def.key]: v }))}
+                  />
+                ))}
+              </div>
+
+              {/* SPLIT: chat + program rail */}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                <div className="lg:col-span-5">
+                  <ChatPanel />
+                </div>
+
+                <div className="lg:col-span-7">
+                  <div className="mb-3 flex items-end justify-between">
+                    <div>
+                      <h3 className="font-display text-xl font-bold">{filtered.length} programs match</h3>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">Ranked by fit · re-rankable from chat</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2" data-testid="program-cards">
+                    {filtered.map((p, i) => (
+                      <motion.a
+                        key={p.uni + p.name}
+                        href="#"
+                        layout
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, ease: expoOut, delay: i * 0.06 }}
+                        whileHover={{ y: -4 }}
+                        className="group block overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-elev transition-shadow hover:shadow-elev-lg"
+                      >
+                        <div className="relative h-32 overflow-hidden">
+                          <img src={p.img} alt="" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--card))] via-transparent to-transparent" />
+                          <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[hsl(var(--primary))] backdrop-blur-md">{p.tag}</span>
+                          <span className="absolute left-3 top-3 text-2xl">{p.flag}</span>
+                        </div>
+                        <div className="p-5">
+                          <h4 className="font-display text-lg font-bold leading-tight">{p.name}</h4>
+                          <p className="mt-0.5 text-sm text-[hsl(var(--muted-foreground))]">{p.uni} · {p.country}</p>
+
+                          <div className="mt-4">
+                            <div className="flex items-baseline justify-between">
+                              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">Fit</span>
+                              <span className="font-display text-sm font-bold">{p.fit}%</span>
+                            </div>
+                            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[hsl(var(--muted))]">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${p.fit}%` }}
+                                transition={{ duration: 1.1, ease: expoOut, delay: 0.2 + i * 0.05 }}
+                                className="h-full bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(var(--primary))]"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[hsl(var(--border))] pt-3 text-sm">
+                            <div>
+                              <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">Tuition</div>
+                              <div className="font-display font-bold">{p.fee}</div>
+                            </div>
+                            <div>
+                              <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">Duration</div>
+                              <div className="font-display font-bold">{p.dur}</div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex items-center justify-between">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">Deadline · Jan 12</span>
+                            <span className="inline-flex items-center gap-1 text-sm font-medium text-[hsl(var(--primary))]">
+                              Open <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                            </span>
+                          </div>
+                        </div>
+                      </motion.a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
+    </PageShell>
+  );
 }

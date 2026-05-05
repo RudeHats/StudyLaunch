@@ -1,479 +1,451 @@
-'use client'
+"use client";
 
-import { useState, useRef } from 'react'
-import { motion, AnimatePresence, useInView } from 'framer-motion'
-import { Navigation } from '@/components/navigation'
-import { Footer } from '@/components/footer'
+import { useState, useMemo, useRef, useEffect } from "react";
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionValue,
+  useInView,
+} from "framer-motion";
+import {
+  TrendingUp,
+  Sparkles,
+  Info,
+  ArrowUpRight,
+  ChevronUp,
+  ChevronDown,
+  Brain,
+  Database,
+  Target,
+} from "lucide-react";
+import PageShell from "@/components/site/PageShell";
 
-interface ProfileData {
-  gpa: number
-  gre: number
-  toefl: number
-  workExp: number
-  research: number
-  university: string
+const expoOut: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+const portraitImg = "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=1000&q=85&auto=format&fit=crop";
+const dataVizImg  = "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1600&q=80&auto=format&fit=crop";
+
+/* ============== PRIMITIVES ============== */
+
+function CountUp({ to }: { to: number }) {
+  const mv = useMotionValue(to);
+  const sp = useSpring(mv, { stiffness: 70, damping: 18 });
+  const [v, setV] = useState(to);
+  useEffect(() => { mv.set(to); }, [mv, to]);
+  useEffect(() => sp.on("change", n => setV(n)), [sp]);
+  return <span className="tabular-nums">{Math.round(v)}</span>;
 }
 
-interface GapAnalysis {
-  factor: string
-  current: string
-  impact: number
-  suggestion: string
-  potential: number
-}
+/** Dual-ring gauge: outer = confidence (60–95% by data density), inner = probability */
+function Gauge({ pct, confidence = 86 }: { pct: number; confidence?: number }) {
+  const r = 100;
+  const c = 2 * Math.PI * r;
+  const r2 = 80;
+  const c2 = 2 * Math.PI * r2;
 
-const defaultProfile: ProfileData = {
-  gpa: 3.5,
-  gre: 318,
-  toefl: 105,
-  workExp: 2,
-  research: 1,
-  university: 'IIT Delhi',
-}
+  const probMV = useMotionValue(0);
+  const sp = useSpring(probMV, { stiffness: 70, damping: 18 });
+  useEffect(() => { probMV.set(pct); }, [probMV, pct]);
 
-const gapAnalysis: GapAnalysis[] = [
-  {
-    factor: 'GRE Score',
-    current: '318',
-    impact: 12,
-    suggestion: 'Scoring 325+ would significantly boost your chances',
-    potential: 18,
-  },
-  {
-    factor: 'Research Papers',
-    current: '1 publication',
-    impact: 8,
-    suggestion: 'Adding 1-2 more publications in top conferences',
-    potential: 15,
-  },
-  {
-    factor: 'Work Experience',
-    current: '2 years',
-    impact: 5,
-    suggestion: 'FAANG or top startup experience adds weight',
-    potential: 10,
-  },
-  {
-    factor: 'Strong LORs',
-    current: 'Good',
-    impact: 10,
-    suggestion: 'Getting recommendation from industry leaders',
-    potential: 15,
-  },
-]
+  const dashOffset = useTransform(sp, p => c - (p / 100) * c);
+  const confOffset = c2 - (confidence / 100) * c2;
 
-const universities = [
-  { name: 'Stanford MSCS', probability: 32, tier: 'Ambitious' },
-  { name: 'CMU MHCI', probability: 48, tier: 'Target' },
-  { name: 'UC Berkeley EECS', probability: 41, tier: 'Target' },
-  { name: 'Georgia Tech MSCS', probability: 72, tier: 'Safe' },
-  { name: 'UT Austin MSCS', probability: 68, tier: 'Safe' },
-  { name: 'UIUC MCS', probability: 78, tier: 'Safe' },
-]
-
-function CircularProgress({ value, size = 200, label }: { value: number; size?: number; label: string }) {
-  const ref = useRef<SVGSVGElement>(null)
-  const isInView = useInView(ref, { once: true })
-  const strokeWidth = 12
-  const radius = (size - strokeWidth) / 2
-  const circumference = radius * 2 * Math.PI
-  const offset = circumference - (value / 100) * circumference
-
-  const getColor = (v: number) => {
-    if (v >= 70) return { color: 'text-gold', gradient: 'from-gold to-gold-dim' }
-    if (v >= 50) return { color: 'text-burgundy', gradient: 'from-burgundy to-burgundy-dark' }
-    return { color: 'text-grey', gradient: 'from-grey to-grey/50' }
-  }
-
-  const colors = getColor(value)
+  const tone =
+    pct >= 80 ? "hsl(158 60% 32%)" :
+    pct >= 60 ? "hsl(148 45% 45%)" :
+                "hsl(35 85% 50%)";
 
   return (
-    <div className="relative flex flex-col items-center">
-      <svg ref={ref} width={size} height={size} className="transform -rotate-90">
-        {/* Background circle */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          className="text-navy-light"
-        />
-        {/* Progress circle */}
+    <div className="relative">
+      <svg viewBox="-120 -120 240 240" className="w-full max-w-[300px]">
+        {/* outer track */}
+        <circle r={r} stroke="hsl(var(--muted))" strokeWidth="8" fill="none" />
+        {/* outer probability arc */}
         <motion.circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="url(#gradient)"
-          strokeWidth={strokeWidth}
+          r={r}
+          stroke={tone}
+          strokeWidth="8"
           strokeLinecap="round"
-          strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
-          animate={isInView ? { strokeDashoffset: offset } : {}}
-          transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+          fill="none"
+          strokeDasharray={c}
+          style={{ strokeDashoffset: dashOffset, rotate: -90 }}
         />
-        <defs>
-          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" className={`${colors.gradient.split(' ')[0].replace('from-', 'stop-')}`} style={{ stopColor: value >= 70 ? '#FFC85C' : value >= 50 ? '#AE2448' : '#BBD5DA' }} />
-            <stop offset="100%" style={{ stopColor: value >= 70 ? '#d4a84a' : value >= 50 ? '#8c1d3a' : '#95adb0' }} />
-          </linearGradient>
-        </defs>
+        {/* inner confidence ring */}
+        <circle r={r2} stroke="hsl(var(--muted))" strokeWidth="2" fill="none" />
+        <motion.circle
+          r={r2}
+          stroke="hsl(var(--accent))"
+          strokeWidth="2"
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={c2}
+          strokeDashoffset={confOffset}
+          style={{ rotate: -90 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.5 }}
+          transition={{ duration: 1.2, delay: 0.3 }}
+        />
+        {/* center text */}
+        <text x="0" y="-6" textAnchor="middle" className="fill-[hsl(var(--muted-foreground))] font-mono" style={{ fontSize: 10, letterSpacing: 2 }}>
+          ADMIT PROBABILITY
+        </text>
+        <text x="0" y="38" textAnchor="middle" className="fill-[hsl(var(--foreground))] font-display font-bold" style={{ fontSize: 60 }}>
+          {/* SVG can't host a React component cleanly, so we overlay via foreignObject */}
+        </text>
+        <foreignObject x="-80" y="-10" width="160" height="80">
+          <div className="flex h-full items-center justify-center font-display text-[64px] font-bold leading-none text-[hsl(var(--foreground))]">
+            <CountUp to={pct} />%
+          </div>
+        </foreignObject>
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <motion.span
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={isInView ? { opacity: 1, scale: 1 } : {}}
-          transition={{ duration: 0.5, delay: 0.8 }}
-          className={`text-5xl font-bold ${colors.color}`}
-        >
-          {value}%
-        </motion.span>
-        <span className="text-sm text-grey mt-1">{label}</span>
-      </div>
     </div>
-  )
+  );
 }
 
-function Slider({ 
-  label, 
-  value, 
-  onChange, 
-  min, 
-  max, 
-  step = 1,
-  unit = '' 
-}: { 
-  label: string
-  value: number
-  onChange: (v: number) => void
-  min: number
-  max: number
-  step?: number
-  unit?: string
-}) {
-  const percentage = ((value - min) / (max - min)) * 100
+/* ============== THINKING THEATRE ============== */
+const stages = [
+  { icon: Brain,    label: "Reading your profile",      hint: "Tokenizing GPA, scores, intent" },
+  { icon: Database, label: "Comparing 1.2M admits",     hint: "k-NN over historical decisions" },
+  { icon: Target,   label: "Scoring with calibration",  hint: "SHAP attributions + isotonic fit" },
+];
+
+function ThinkingTheatre({ active, runId }: { active: boolean; runId: number }) {
+  const [stage, setStage] = useState(0);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (!active) return;
+    setStage(0);
+    setProgress(0);
+    let s = 0;
+    const stageT = setInterval(() => {
+      s += 1;
+      if (s >= stages.length) clearInterval(stageT);
+      else setStage(s);
+    }, 220);
+    let p = 0;
+    const progT = setInterval(() => {
+      p = Math.min(100, p + 4);
+      setProgress(p);
+      if (p >= 100) clearInterval(progT);
+    }, 26);
+    return () => { clearInterval(stageT); clearInterval(progT); };
+  }, [active, runId]);
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-sm">
-        <span className="text-grey">{label}</span>
-        <span className="text-cream font-medium">{value}{unit}</span>
+    <AnimatePresence>
+      {active && (
+        <motion.div
+          key={runId}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3 }}
+          className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]/90 p-4 backdrop-blur-md"
+        >
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[hsl(var(--muted-foreground))]">
+              Recalculating
+            </span>
+            <span className="font-mono text-[10px] tabular-nums text-[hsl(var(--accent))]">{progress}%</span>
+          </div>
+          <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-[hsl(var(--muted))]">
+            <motion.div
+              className="h-full bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(var(--primary))]"
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.15, ease: "linear" }}
+            />
+          </div>
+          <div className="mt-3 space-y-1.5">
+            {stages.map((s, i) => {
+              const done = i < stage;
+              const cur  = i === stage;
+              return (
+                <div key={s.label} className="flex items-center gap-2.5">
+                  <s.icon className={`h-3.5 w-3.5 shrink-0 ${done ? "text-[hsl(var(--success))]" : cur ? "text-[hsl(var(--accent))]" : "text-[hsl(var(--muted-foreground))]/40"}`} />
+                  <span className={`text-xs ${done ? "text-[hsl(var(--muted-foreground))] line-through" : cur ? "text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))]/50"}`}>
+                    {s.label}
+                  </span>
+                  {cur && (
+                    <span className="ml-auto inline-flex gap-0.5">
+                      {[0,1,2].map(d => (
+                        <motion.span key={d} className="h-1 w-1 rounded-full bg-[hsl(var(--accent))]"
+                          animate={{ opacity: [0.2, 1, 0.2] }}
+                          transition={{ duration: 0.9, repeat: Infinity, delay: d * 0.15 }} />
+                      ))}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ============== SLIDER ============== */
+function Slider({ label, value, min, max, step, onChange, display }: {
+  label: string; value: number; min: number; max: number; step: number;
+  onChange: (n: number) => void; display: string;
+}) {
+  const pct = ((value - min) / (max - min)) * 100;
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm font-medium">{label}</span>
+        <span className="font-mono text-sm tabular-nums text-[hsl(var(--accent))]">{display}</span>
       </div>
-      <div className="relative">
-        <div className="h-2 bg-navy-light rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-burgundy to-gold rounded-full transition-all"
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
+      <div className="relative mt-3 h-2 rounded-full bg-[hsl(var(--muted))]">
+        <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(var(--primary))]" style={{ width: `${pct}%` }} />
+        <div className="absolute -top-1 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-[hsl(var(--card))] bg-[hsl(var(--primary))] shadow-elev" style={{ left: `${pct}%` }} />
         <input
           type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
+          min={min} max={max} step={step} value={value}
+          onChange={e => onChange(parseFloat(e.target.value))}
+          className="absolute inset-0 w-full cursor-pointer opacity-0"
         />
       </div>
     </div>
-  )
+  );
 }
 
-export default function OraclePage() {
-  const [profile, setProfile] = useState<ProfileData>(defaultProfile)
-  const [selectedUniversity, setSelectedUniversity] = useState<string | null>(null)
-  const [showAnalysis, setShowAnalysis] = useState(false)
-  const [isCalculating, setIsCalculating] = useState(false)
+/* ============== PAGE ============== */
+export default function Oracle() {
+  const [gpa, setGpa]       = useState(8.6);
+  const [gre, setGre]       = useState(326);
+  const [ielts, setIelts]   = useState(8);
+  const [workEx, setWorkEx] = useState(2.5);
 
-  const calculateProbability = () => {
-    setIsCalculating(true)
-    setTimeout(() => {
-      setIsCalculating(false)
-      setShowAnalysis(true)
-    }, 2000)
-  }
+  const probability = useMemo(() => {
+    const score = Math.min(100, (gpa - 5) * 12 + (gre - 280) * 0.45 + (ielts - 5) * 4 + workEx * 3);
+    return Math.max(8, Math.round(score));
+  }, [gpa, gre, ielts, workEx]);
 
-  const overallProbability = Math.round(
-    (profile.gpa / 4) * 25 +
-    (profile.gre / 340) * 25 +
-    (profile.toefl / 120) * 15 +
-    (profile.workExp / 5) * 15 +
-    (profile.research / 5) * 20
-  )
+  // Trigger thinking theatre on every input change
+  const [thinking, setThinking] = useState(false);
+  const [runId, setRunId] = useState(0);
+  useEffect(() => {
+    setRunId(r => r + 1);
+    setThinking(true);
+    const t = setTimeout(() => setThinking(false), 900);
+    return () => clearTimeout(t);
+  }, [gpa, gre, ielts, workEx]);
+
+  const factors = [
+    { label: "Academic GPA",                impact: 22,  up: true  },
+    { label: "Standardized tests",          impact: 18,  up: true  },
+    { label: "Research output",             impact: -7,  up: false },
+    { label: "Work experience relevance",   impact: 11,  up: true  },
+    { label: "SOP strength (drafted)",      impact: 9,   up: true  },
+  ];
+
+  const portraitRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: portraitRef, offset: ["start end", "end start"] });
+  const yPort = useTransform(scrollYProgress, [0, 1], ["-6%", "10%"]);
 
   return (
-    <main className="relative min-h-screen bg-navy">
-      <Navigation />
-      
-      {/* Hero */}
-      <section className="relative pt-32 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-gold/5 via-transparent to-transparent" />
-        <div className="absolute top-20 right-1/4 w-96 h-96 bg-gold/15 rounded-full blur-[150px]" />
-        <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-burgundy/10 rounded-full blur-[120px]" />
-        
-        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <span className="inline-block px-4 py-1.5 text-xs font-medium text-gold bg-gold/10 rounded-full mb-4">
-              Admission Oracle
-            </span>
-            <h1 className="text-4xl md:text-5xl font-bold text-cream mb-4">
-              Know your{' '}
-              <span className="font-serif italic text-burgundy">admit chances</span>
-              {' '}before you apply.
-            </h1>
-            <p className="text-lg text-grey max-w-2xl mx-auto">
-              Our predictive engine trained on 500K+ admit decisions shows exactly where you stand and what to improve.
-            </p>
-          </motion.div>
+    <PageShell>
+      {/* ===== HERO STRIP ===== */}
+      <section className="relative overflow-hidden border-b border-[hsl(var(--border))] bg-[hsl(var(--surface))]/60 py-14">
+        <div className="mx-auto max-w-7xl px-6">
+          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-[hsl(var(--muted-foreground))]">Surface 02 · Oracle</span>
+          <h1 className="mt-3 max-w-3xl font-display text-4xl font-bold leading-[1.05] text-[hsl(var(--foreground))] md:text-6xl">
+            Know your odds ;) <span className="italic text-gradient-ink">before you apply.</span>
+          </h1>
+          <p className="mt-4 max-w-2xl text-lg text-[hsl(var(--muted-foreground))]">
+            A live probability gauge built on 1.2M+ historical admits. Drag any input the gauge moves with you.
+          </p>
         </div>
       </section>
 
-      {/* Calculator Section */}
-      <section className="relative pb-32">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* Profile Input */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="glass rounded-2xl border border-white/10 p-6"
-            >
-              <h3 className="text-xl font-semibold text-cream mb-6">Your Profile</h3>
-              
-              <div className="space-y-6">
-                <Slider
-                  label="GPA (out of 4.0)"
-                  value={profile.gpa}
-                  onChange={(v) => setProfile({ ...profile, gpa: v })}
-                  min={2.0}
-                  max={4.0}
-                  step={0.1}
-                />
-                
-                <Slider
-                  label="GRE Score"
-                  value={profile.gre}
-                  onChange={(v) => setProfile({ ...profile, gre: v })}
-                  min={260}
-                  max={340}
-                />
-                
-                <Slider
-                  label="TOEFL Score"
-                  value={profile.toefl}
-                  onChange={(v) => setProfile({ ...profile, toefl: v })}
-                  min={80}
-                  max={120}
-                />
-                
-                <Slider
-                  label="Work Experience"
-                  value={profile.workExp}
-                  onChange={(v) => setProfile({ ...profile, workExp: v })}
-                  min={0}
-                  max={10}
-                  unit=" years"
-                />
-                
-                <Slider
-                  label="Research Publications"
-                  value={profile.research}
-                  onChange={(v) => setProfile({ ...profile, research: v })}
-                  min={0}
-                  max={10}
-                  unit=" papers"
-                />
+      <section className="mx-auto max-w-7xl px-6 py-16">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
+          {/* ===== GAUGE COLUMN ===== */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, ease: expoOut }}
+            className="relative lg:col-span-5"
+            data-testid="oracle-gauge-col"
+          >
+            <div className="rounded-3xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-8 shadow-elev-lg">
+              <Gauge pct={probability} confidence={86} />
 
-                <div className="space-y-2">
-                  <label className="text-sm text-grey">Undergraduate Institution</label>
-                  <select
-                    value={profile.university}
-                    onChange={(e) => setProfile({ ...profile, university: e.target.value })}
-                    className="w-full px-4 py-3 bg-navy-light border border-white/10 rounded-xl text-cream focus:outline-none focus:border-burgundy/50"
-                  >
-                    <option value="IIT Delhi">IIT Delhi</option>
-                    <option value="IIT Bombay">IIT Bombay</option>
-                    <option value="IIT Madras">IIT Madras</option>
-                    <option value="BITS Pilani">BITS Pilani</option>
-                    <option value="NIT Trichy">NIT Trichy</option>
-                    <option value="Other Tier-1">Other Tier-1</option>
-                    <option value="Other Tier-2">Other Tier-2</option>
-                    <option value="Other">Other</option>
-                  </select>
+              <div className="mt-6 grid grid-cols-3 gap-2">
+                {[
+                  ["Reach",  "<60%",  probability < 60],
+                  ["Match",  "60–80%", probability >= 60 && probability < 80],
+                  ["Safety", "≥80%",   probability >= 80],
+                ].map(([t, r, on]: any) => (
+                  <div key={t} className={`rounded-xl border p-3 text-center transition-all ${on ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]" : "border-[hsl(var(--border))] bg-[hsl(var(--surface))]"}`}>
+                    <div className="font-display text-sm font-bold">{t}</div>
+                    <div className={`font-mono text-[10px] uppercase tracking-[0.18em] ${on ? "opacity-80" : "text-[hsl(var(--muted-foreground))]"}`}>{r}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5">
+                <ThinkingTheatre active={thinking} runId={runId} />
+              </div>
+
+              <div className="mt-5 rounded-2xl bg-[hsl(var(--accent-soft))] p-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
+                  <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[hsl(var(--primary))]">Oracle insight</span>
                 </div>
+                <p className="mt-2 text-sm text-[hsl(var(--primary))]">
+                  You're <strong>+12%</strong> above the median admit for this program. A targeted research artefact could push you to <strong>92%</strong>.
+                </p>
+                <button className="mt-3 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[hsl(var(--primary))] hover:underline">
+                  Apply suggestion <ArrowUpRight className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={calculateProbability}
-                  disabled={isCalculating}
-                  className="w-full py-4 bg-burgundy text-cream font-semibold rounded-xl hover:bg-burgundy-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isCalculating ? (
-                    <>
-                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Analyzing...
-                    </>
-                  ) : (
-                    'Calculate My Chances'
-                  )}
-                </motion.button>
+            {/* Floating editorial portrait */}
+            <motion.div
+              ref={portraitRef}
+              style={{ y: yPort }}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 1.2, ease: expoOut, delay: 0.3 }}
+              className="absolute -left-6 -bottom-10 hidden h-44 w-32 overflow-hidden rounded-2xl shadow-ink ring-4 ring-[hsl(var(--background))] md:block"
+            >
+              <img src={portraitImg} alt="Student" className="h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[hsl(156_60%_8%)]/40 to-transparent" />
+            </motion.div>
+          </motion.div>
+
+          {/* ===== INPUTS + FACTORS ===== */}
+          <div className="space-y-6 lg:col-span-7">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, ease: expoOut }}
+              className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 shadow-elev"
+              data-testid="oracle-inputs"
+            >
+              <div className="flex items-end justify-between">
+                <div>
+                  <h2 className="font-display text-xl font-bold">Inputs</h2>
+                  <p className="text-sm text-[hsl(var(--muted-foreground))]">Move sliders the gauge responds in real time.</p>
+                </div>
+                <div className="flex items-center gap-2 rounded-full bg-[hsl(var(--success-soft))] px-3 py-1">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[hsl(var(--success))] opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[hsl(var(--success))]" />
+                  </span>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[hsl(var(--success))]">Live model</span>
+                </div>
+              </div>
+
+              <div className="mt-6 grid grid-cols-1 gap-7 md:grid-cols-2">
+                <Slider label="Academic GPA"  value={gpa}    min={5}   max={10}  step={0.1} onChange={setGpa}    display={`${gpa.toFixed(1)} / 10`} />
+                <Slider label="GRE score"     value={gre}    min={280} max={340} step={1}   onChange={setGre}    display={String(gre)} />
+                <Slider label="IELTS / TOEFL" value={ielts}  min={5}   max={9}   step={0.5} onChange={setIelts}  display={`${ielts} band`} />
+                <Slider label="Work experience" value={workEx} min={0}  max={10}  step={0.5} onChange={setWorkEx} display={`${workEx} yr`} />
               </div>
             </motion.div>
 
-            {/* Results */}
+            {/* FACTORS — with abstract data-viz background */}
             <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="space-y-6"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, ease: expoOut }}
+              className="relative overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 shadow-elev"
+              data-testid="oracle-factors"
             >
-              {/* Overall Score */}
-              <div className="glass rounded-2xl border border-white/10 p-6">
-                <h3 className="text-xl font-semibold text-cream mb-6 text-center">Overall Admit Probability</h3>
-                <div className="flex justify-center">
-                  <CircularProgress value={overallProbability} label="Aggregate" />
-                </div>
-                <p className="text-center text-grey text-sm mt-4">
-                  Based on your profile compared to 500K+ historical admits
-                </p>
-              </div>
+              <img src={dataVizImg} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.06] mix-blend-multiply" />
+              <div className="relative">
+                <h2 className="font-display text-xl font-bold">Why this score</h2>
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">Explainable factors derived from your profile (SHAP).</p>
 
-              {/* University-wise */}
-              <div className="glass rounded-2xl border border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-cream mb-4">By University</h3>
-                <div className="space-y-3">
-                  {universities.map((uni, i) => (
-                    <motion.div
-                      key={uni.name}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: i * 0.05 }}
-                      onClick={() => setSelectedUniversity(selectedUniversity === uni.name ? null : uni.name)}
-                      className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${
-                        selectedUniversity === uni.name 
-                          ? 'bg-burgundy/20 border border-burgundy/30' 
-                          : 'bg-navy-light/30 hover:bg-navy-light/50'
-                      }`}
-                    >
-                      <div>
-                        <div className="font-medium text-cream">{uni.name}</div>
-                        <div className={`text-xs ${
-                          uni.tier === 'Ambitious' ? 'text-burgundy' :
-                          uni.tier === 'Target' ? 'text-gold' :
-                          'text-grey'
-                        }`}>
-                          {uni.tier}
+                <div className="mt-5 space-y-3">
+                  {factors.map((f, i) => {
+                    const mag = Math.abs(f.impact);
+                    return (
+                      <motion.div
+                        key={f.label}
+                        initial={{ opacity: 0, x: -12 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, ease: expoOut, delay: i * 0.07 }}
+                        className="grid grid-cols-[1fr_auto] items-center gap-4"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{f.label}</span>
+                            <span className={`font-mono text-xs tabular-nums ${f.up ? "text-[hsl(var(--success))]" : "text-[hsl(var(--destructive))]"}`}>
+                              {f.up ? "+" : "−"}{mag}%
+                            </span>
+                          </div>
+                          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[hsl(var(--muted))]">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              whileInView={{ width: `${(mag / 25) * 100}%` }}
+                              viewport={{ once: true }}
+                              transition={{ duration: 1.1, ease: expoOut, delay: 0.1 + i * 0.07 }}
+                              className={f.up ? "h-full bg-[hsl(var(--success))]" : "h-full bg-[hsl(var(--destructive))]"}
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-24 h-2 bg-navy-light rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${uni.probability}%` }}
-                            transition={{ duration: 1, delay: i * 0.1 }}
-                            className={`h-full rounded-full ${
-                              uni.probability >= 70 ? 'bg-gold' :
-                              uni.probability >= 50 ? 'bg-burgundy' :
-                              'bg-grey'
-                            }`}
-                          />
-                        </div>
-                        <span className={`text-sm font-semibold w-10 text-right ${
-                          uni.probability >= 70 ? 'text-gold' :
-                          uni.probability >= 50 ? 'text-burgundy' :
-                          'text-grey'
-                        }`}>
-                          {uni.probability}%
-                        </span>
-                      </div>
-                    </motion.div>
+                        {f.up
+                          ? <ChevronUp className="h-4 w-4 text-[hsl(var(--success))]" />
+                          : <ChevronDown className="h-4 w-4 text-[hsl(var(--destructive))]" />}
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* COMPARED TO ADMITS — distribution */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, ease: expoOut }}
+              className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 shadow-elev"
+              data-testid="oracle-distribution"
+            >
+              <h2 className="font-display text-xl font-bold">Compared to admits</h2>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">Your position in the historical distribution.</p>
+
+              <div className="mt-6">
+                <div className="relative h-2 rounded-full bg-gradient-to-r from-[hsl(var(--muted))] via-[hsl(var(--accent-soft))] to-[hsl(var(--accent))]">
+                  <motion.div
+                    initial={{ left: "0%" }}
+                    animate={{ left: `${probability}%` }}
+                    transition={{ type: "spring", stiffness: 80, damping: 18 }}
+                    className="absolute -top-1 -translate-x-1/2"
+                  >
+                    <div className="flex h-4 w-4 items-center justify-center rounded-full border-2 border-[hsl(var(--card))] bg-[hsl(var(--primary))] shadow-elev" />
+                    <div className="absolute left-1/2 top-5 -translate-x-1/2 whitespace-nowrap rounded-md bg-[hsl(var(--primary))] px-2 py-0.5 font-mono text-[10px] text-[hsl(var(--primary-foreground))]">
+                      You · {probability}%
+                    </div>
+                  </motion.div>
+                </div>
+                <div className="mt-12 grid grid-cols-3 gap-3">
+                  {[["P25", "68%"], ["Median", "78%"], ["P90", "91%"]].map(([k, v]) => (
+                    <div key={k} className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-3 text-center">
+                      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">{k}</div>
+                      <div className="mt-1 font-display text-lg font-bold">{v}</div>
+                    </div>
                   ))}
                 </div>
               </div>
             </motion.div>
           </div>
-
-          {/* Gap Analysis */}
-          <AnimatePresence>
-            {showAnalysis && (
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 30 }}
-                transition={{ duration: 0.6 }}
-                className="mt-8"
-              >
-                <div className="glass rounded-2xl border border-white/10 p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-semibold text-cream">Gap Analysis & Recommendations</h3>
-                    <span className="px-3 py-1 text-xs bg-gold/10 text-gold rounded-full">AI Powered</span>
-                  </div>
-                  
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {gapAnalysis.map((gap, i) => (
-                      <motion.div
-                        key={gap.factor}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.4, delay: i * 0.1 }}
-                        className="p-4 bg-navy-light/30 rounded-xl"
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <h4 className="font-medium text-cream">{gap.factor}</h4>
-                            <p className="text-sm text-grey">Current: {gap.current}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm text-grey">Impact</div>
-                            <div className="text-lg font-semibold text-burgundy">+{gap.impact}%</div>
-                          </div>
-                        </div>
-                        <p className="text-sm text-grey mb-3">{gap.suggestion}</p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-grey">Potential boost:</span>
-                          <span className="text-xs text-gold font-medium">+{gap.potential}%</span>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  <div className="mt-6 p-4 bg-gradient-to-r from-gold/10 to-burgundy/10 rounded-xl border border-gold/20">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-5 h-5 text-gold" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-cream mb-1">Oracle Insight</h4>
-                        <p className="text-sm text-grey">
-                          With targeted improvements in GRE (+7 points) and one additional publication, 
-                          your overall admit probability could increase to <span className="text-gold font-semibold">74%</span>, 
-                          making Stanford a realistic Target rather than Ambitious.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </section>
-
-      <Footer />
-    </main>
-  )
+    </PageShell>
+  );
 }
