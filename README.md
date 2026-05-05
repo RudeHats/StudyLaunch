@@ -2,6 +2,8 @@
 
 **The Next-Generation SaaS Platform for Elite University Admissions**
 
+View the Prototype: https://tensorx-studylaunch.vercel.app/
+
 ## Overview
 
 StudyLaunch is an enterprise-grade ecosystem tailored for candidates navigating top-tier university admissions and funding. Built with Next.js App Router, the platform provides hyper-personalized matching, probabilistic admission scoring, and precise educational financing models, delivering a deterministic processing experience entirely within the browser. 
@@ -15,21 +17,24 @@ This platform acts as an automated consultant that eliminates the guesswork trad
 The Navigator serves as the main entry point to the system. It leverages a vast proprietary database to algorithmically match students against 12,000+ elite global programs.
 - **Parametric Filtering:** Tuned to handle constraints across budget, standardized test scores (GRE/GMAT/IELTS), and strict geographical requirements.
 - **Dynamic Program Shortlisting:** Adjusts real-time with visual updates prioritizing highest ROI paths.
-- ![System Feature DFD 1](./app/assets/dfds/features-exp1.png)
+
+  ![System Feature DFD 1](./app/assets/dfds/features-exp1.png)
 
 
 ### 2. Oracle (Probability)
 Oracle replaces human intuition with statistical rigor. It provides a real-time admit probability based on algorithmic evaluation logic.
 - **Explainable Analytics:** Oracle explains *why* a candidate has an 87% chance for Cornell but a 54% chance for Stanford.
 - **Factor Grading:** Assesses profile weight logic, grading undergraduate university rigor, work experience duration, and GPA scaling.
-- ![System Feature DFD 2](./app/assets/dfds/features-exp2.png)
+
+  ![System Feature DFD 2](./app/assets/dfds/features-exp2.png)
   
 
 ### 3. LoanSense (Financing)
 LoanSense acts as an embedded financial partner modeling viable tuition coverage mechanisms for candidates.
 - **Co-Signer-Free Workflows:** Identifies loan products applicable to international students without a local cosigner.
 - **Amortization & EMI Modeling:** Calculates long-term ROI depending on expected post-graduate salaries versus compound loan interest.
-- ![System Feature DFD 3](./app/assets/dfds/features-exp3.png)
+
+ ![System Feature DFD 3](./app/assets/dfds/features-exp3.png)
   
 
 ### 4. Dashboard (Command Center)
