@@ -3,32 +3,14 @@
 /* ============================================================
    StudyLaunch — Refactored Landing (single page.tsx)
    ------------------------------------------------------------
-   Fixes applied:
-   1. Tightened copy across hero/features/journey (less noise,
-      more confidence — same voice).
-   2. Sharper images (Unsplash w=1800–2400, q=90) + 2 swaps on
-      the blurry horizontal-scroll feature cards.
-   3. NEW: <TeamSection/> — 3 members with tilt + monogram ring.
-   4. NEW: <ManifestoBand/> — kinetic signature moment.
-   5. NEW: <PageEnter/> — curtain mount transition for the
-      "creative page switch" feel (plays every time this route
-      mounts). For true route-to-route transitions add the tiny
-      template.tsx below to /app:
-
-      // /app/template.tsx
-      "use client";
-      import { motion } from "framer-motion";
-      export default function Template({ children }: { children: React.ReactNode }) {
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: 24, filter: "blur(8px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          >
-            {children}
-          </motion.div>
-        );
-      }
+   v2 enhancements (additive — nothing removed from v1):
+   • <BlobCursor/>            — corporate-tasteful magnetic cursor
+   • <SplitTextReveal/>       — per-letter mask reveal for big titles
+   • <Float/>                 — breathing motion wrapper for hero/stat cards
+   • Hero SVG flight-path     — animated dashed arc with pulsing endpoint
+   • <DestinationsMarquee/>   — image-marquee band of destination cities
+   • <ScrapbookCollage/>      — polaroid-style collage before ClosingCTA
+   • Journey thumbnails       — each of the 4 steps now has a parallax image
    ============================================================ */
 
 import { useState, useRef, useEffect } from "react";
@@ -56,6 +38,9 @@ import {
   Star,
   Plane,
   Linkedin,
+  MapPin,
+  Globe2,
+  Camera,
 } from "lucide-react";
 import PageShell from "@/components/site/PageShell";
 
@@ -92,7 +77,7 @@ const features = [
     icon: LayoutDashboard,
     title: "Dashboard",
     tag: "Command",
-    desc: "Deadlines, gap cards, vault your application HQ.",
+    desc: "Deadlines, gap cards, vault — your application HQ.",
     img: "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
   },
   {
@@ -112,11 +97,32 @@ const stats = [
   { v: 38, prefix: "", suffix: " hrs", l: "Avg. saved / app" },
 ];
 
+/* journey now carries thumbnail imagery for the pinned rail */
 const journey = [
-  { n: "01", t: "Discover", d: "Tell us your goal. 12 best-fit programs in 30 seconds." },
-  { n: "02", t: "Predict", d: "Oracle scores your admit odds across every shortlist." },
-  { n: "03", t: "Finance", d: "LoanSense sanctions a co-signer-free offer." },
-  { n: "04", t: "Launch", d: "Track deadlines, drafts and disbursals in one cockpit." },
+  {
+    n: "01",
+    t: "Discover",
+    d: "Tell us your goal. 12 best-fit programs in 30 seconds.",
+    img: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&q=90&auto=format&fit=crop",
+  },
+  {
+    n: "02",
+    t: "Predict",
+    d: "Oracle scores your admit odds across every shortlist.",
+    img: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=1200&q=90&auto=format&fit=crop",
+  },
+  {
+    n: "03",
+    t: "Finance",
+    d: "LoanSense sanctions a co-signer-free offer.",
+    img: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1200&q=90&auto=format&fit=crop",
+  },
+  {
+    n: "04",
+    t: "Launch",
+    d: "Track deadlines, drafts and disbursals in one cockpit.",
+    img: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1200&q=90&auto=format&fit=crop",
+  },
 ];
 
 const testimonials = [
@@ -140,7 +146,7 @@ const testimonials = [
   },
 ];
 
-/* NEW — team data (swap names/imgs later) */
+/* NEW — team data */
 const team = [
   {
     n: "Anshuman Pathak",
@@ -162,6 +168,74 @@ const team = [
     bio: "RAG, SHAP, and the math behind the gauge.",
     img: "/assets/team/deepanshu.jpeg",
     link: "https://www.linkedin.com/in/deepanshu-dwivedi-89787a2b6/",
+  },
+];
+
+/* NEW — destinations marquee */
+const destinations = [
+  {
+    city: "OXFORD",
+    country: "UK",
+    img: "https://images.unsplash.com/photo-1548383135-9bf3a73b1cd8?w=1400&q=90&auto=format&fit=crop",
+  },
+  {
+    city: "STANFORD",
+    country: "USA",
+    img: "https://images.unsplash.com/photo-1564981797816-1043664bf78d?w=1400&q=90&auto=format&fit=crop",
+  },
+  {
+    city: "ZÜRICH",
+    country: "CH",
+    img: "https://images.unsplash.com/photo-1515488764276-beab7607c1e6?w=1400&q=90&auto=format&fit=crop",
+  },
+  {
+    city: "TORONTO",
+    country: "CA",
+    img: "https://images.unsplash.com/photo-1517090504586-fde19ea6066f?w=1400&q=90&auto=format&fit=crop",
+  },
+  {
+    city: "SINGAPORE",
+    country: "SG",
+    img: "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=1400&q=90&auto=format&fit=crop",
+  },
+  {
+    city: "PARIS",
+    country: "FR",
+    img: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1400&q=90&auto=format&fit=crop",
+  },
+];
+
+/* NEW — scrapbook collage */
+const collage = [
+  {
+    img: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1200&q=90&auto=format&fit=crop",
+    caption: "Convocation · Class of ’25",
+    rot: -6,
+  },
+  {
+    img: "https://images.unsplash.com/photo-1571260899304-425eee4c7efc?w=1200&q=90&auto=format&fit=crop",
+    caption: "First day · ETH",
+    rot: 4,
+  },
+  {
+    img: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=1200&q=90&auto=format&fit=crop",
+    caption: "Studio · Toronto",
+    rot: -3,
+  },
+  {
+    img: "https://images.unsplash.com/photo-1606761568499-6d2451b23c66?w=1200&q=90&auto=format&fit=crop",
+    caption: "Sevis sorted · JFK",
+    rot: 6,
+  },
+  {
+    img: "https://images.unsplash.com/photo-1527269534026-c86f4009eace?w=1200&q=90&auto=format&fit=crop",
+    caption: "INSEAD lawns",
+    rot: -2,
+  },
+  {
+    img: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1200&q=90&auto=format&fit=crop",
+    caption: "Late nights · Bodleian",
+    rot: 5,
   },
 ];
 
@@ -207,6 +281,75 @@ function ScrollProgressRail() {
   );
 }
 
+/* NEW — corporate-tasteful magnetic cursor (desktop, motion-safe) */
+function BlobCursor() {
+  const reduce = useReducedMotion();
+  const x = useMotionValue(-100);
+  const y = useMotionValue(-100);
+  const sx = useSpring(x, { stiffness: 260, damping: 28, mass: 0.4 });
+  const sy = useSpring(y, { stiffness: 260, damping: 28, mass: 0.4 });
+  const dotX = useSpring(x, { stiffness: 600, damping: 30, mass: 0.2 });
+  const dotY = useSpring(y, { stiffness: 600, damping: 30, mass: 0.2 });
+  const [hovering, setHovering] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    if (reduce) return;
+    // disable on coarse pointers
+    const fine = window.matchMedia("(pointer: fine)").matches;
+    if (!fine) return;
+    setEnabled(true);
+
+    const onMove = (e: MouseEvent) => {
+      x.set(e.clientX);
+      y.set(e.clientY);
+    };
+    const onOver = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      setHovering(!!t.closest("a, button, [data-cursor='hover']"));
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseover", onOver);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseover", onOver);
+    };
+  }, [reduce, x, y]);
+
+  if (!enabled) return null;
+  return (
+    <>
+      <motion.div
+        aria-hidden
+        style={{ x: sx, y: sy }}
+        className="pointer-events-none fixed left-0 top-0 z-[70] -translate-x-1/2 -translate-y-1/2 mix-blend-multiply"
+      >
+        <motion.div
+          animate={{ scale: hovering ? 2.4 : 1, opacity: hovering ? 0.55 : 0.32 }}
+          transition={{ duration: 0.45, ease: expoOut }}
+          className="h-12 w-12 rounded-full bg-[hsl(var(--accent))] blur-2xl"
+        />
+      </motion.div>
+      <motion.div
+        aria-hidden
+        style={{ x: dotX, y: dotY }}
+        className="pointer-events-none fixed left-0 top-0 z-[71] -translate-x-1/2 -translate-y-1/2"
+      >
+        <motion.div
+          animate={{
+            scale: hovering ? 1.6 : 1,
+            backgroundColor: hovering ? "hsl(var(--accent))" : "transparent",
+            borderColor: hovering ? "hsl(var(--accent))" : "hsl(var(--foreground))",
+          }}
+          transition={{ duration: 0.25, ease: expoOut }}
+          className="h-3 w-3 rounded-full border"
+        />
+      </motion.div>
+    </>
+  );
+}
+
 function WordReveal({
   text,
   className = "",
@@ -233,6 +376,64 @@ function WordReveal({
         </span>
       ))}
     </span>
+  );
+}
+
+/* NEW — per-letter masked reveal */
+function SplitTextReveal({
+  text,
+  className = "",
+  delay = 0,
+  stagger = 0.025,
+}: {
+  text: string;
+  className?: string;
+  delay?: number;
+  stagger?: number;
+}) {
+  const letters = Array.from(text);
+  return (
+    <span className={className} aria-label={text}>
+      {letters.map((ch, i) => (
+        <span key={i} className="inline-block overflow-hidden align-bottom" aria-hidden>
+          <motion.span
+            initial={{ y: "110%", opacity: 0 }}
+            whileInView={{ y: "0%", opacity: 1 }}
+            viewport={{ once: true, margin: "-10% 0px" }}
+            transition={{ duration: 0.7, ease: expoOut, delay: delay + i * stagger }}
+            className="inline-block"
+          >
+            {ch === " " ? "u00A0" : ch}
+          </motion.span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/* NEW — breathing float wrapper */
+function Float({
+  children,
+  amplitude = 6,
+  duration = 5,
+  delay = 0,
+  className = "",
+}: {
+  children: React.ReactNode;
+  amplitude?: number;
+  duration?: number;
+  delay?: number;
+  className?: string;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      className={className}
+      animate={reduce ? undefined : { y: [-amplitude, amplitude, -amplitude] }}
+      transition={{ duration, repeat: Infinity, ease: "easeInOut", delay }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -422,7 +623,7 @@ function ArcGauge({ value = 87, label = "Admit Probability" }: { value?: number;
   );
 }
 
-/* NEW — curtain reveal on mount (mimics route transition) */
+/* curtain reveal on mount */
 function PageEnter({ children }: { children: React.ReactNode }) {
   const [done, setDone] = useState(false);
   useEffect(() => {
@@ -513,9 +714,47 @@ function HeroSection() {
       <motion.div style={{ background: meshBg }} className="absolute inset-0" />
       <div className="grain absolute inset-0 pointer-events-none" />
 
+      {/* NEW — animated SVG flight path overlay */}
+      <svg
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 h-full w-full"
+        viewBox="0 0 1200 800"
+        preserveAspectRatio="none"
+      >
+        <motion.path
+          d="M -20 720 C 220 620, 420 220, 720 270 S 1100 80, 1240 60"
+          stroke="hsl(var(--accent))"
+          strokeWidth="1.25"
+          strokeDasharray="2 8"
+          strokeLinecap="round"
+          fill="none"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 0.55 }}
+          transition={{ duration: 2.6, ease: expoOut, delay: 1 }}
+        />
+        <motion.circle
+          cx="1100"
+          cy="80"
+          r="5"
+          fill="hsl(var(--accent))"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: [0.6, 1.4, 0.6], opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: 3.6 }}
+        />
+        <motion.circle
+          cx="-20"
+          cy="720"
+          r="3"
+          fill="hsl(var(--accent))"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 0] }}
+          transition={{ duration: 2.6, ease: expoOut, delay: 1 }}
+        />
+      </svg>
+
       <motion.div
         style={{ opacity }}
-        className="relative mx-auto grid min-h-[100svh] max-w-[1400px] grid-cols-1 items-center gap-16 px-6 py-28 lg:grid-cols-[1.05fr_1fr] lg:px-10"
+        className="relative z-[1] mx-auto grid min-h-[100svh] max-w-[1400px] grid-cols-1 items-center gap-16 px-6 py-28 lg:grid-cols-[1.05fr_1fr] lg:px-10"
       >
         {/* Left */}
         <motion.div style={{ y: yText }} className="relative z-10">
@@ -535,11 +774,14 @@ function HeroSection() {
           </h1>
 
           <p className="mt-8 max-w-xl text-lg leading-relaxed text-[hsl(var(--muted-foreground))]">
-            AI-driven discovery, admit scoring and regulated education financing orchestrated into a single journey.
+            AI-driven discovery, admit scoring and regulated education financing — orchestrated into a single journey.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <MagneticButton className="group inline-flex items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-7 py-4 text-sm font-medium text-[hsl(var(--primary-foreground))] shadow-elev hover:shadow-elev-lg">
+            <MagneticButton
+              data-cursor="hover"
+              className="group inline-flex items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-7 py-4 text-sm font-medium text-[hsl(var(--primary-foreground))] shadow-elev hover:shadow-elev-lg"
+            >
               <span> Launch your application</span>
               <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </MagneticButton>
@@ -577,27 +819,33 @@ function HeroSection() {
             </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.8, ease: expoOut }}
-            className="absolute -left-6 top-10 rounded-2xl border border-[hsl(var(--border))] bg-white/90 p-4 shadow-elev-lg backdrop-blur"
-          >
-            <ArcGauge value={87} />
-          </motion.div>
+          {/* Floating ArcGauge card */}
+          <Float amplitude={8} duration={6} className="absolute -left-6 top-10">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.8, ease: expoOut }}
+              className="rounded-2xl border border-[hsl(var(--border))] bg-white/90 p-4 shadow-elev-lg backdrop-blur"
+            >
+              <ArcGauge value={87} />
+            </motion.div>
+          </Float>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 0.8, ease: expoOut }}
-            className="absolute -right-4 bottom-16 rounded-2xl border border-[hsl(var(--border))] bg-white/90 p-4 shadow-elev-lg backdrop-blur"
-          >
-            <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-[hsl(var(--muted-foreground))]">
-              <Wallet className="h-3.5 w-3.5 text-[hsl(var(--accent))]" />
-              Loan ready
-            </div>
-            <div className="mt-1 font-display text-xl">₹42L · 9.2% p.a.</div>
-          </motion.div>
+          {/* Floating loan-ready card */}
+          <Float amplitude={6} duration={5.4} delay={0.6} className="absolute -right-4 bottom-16">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 0.8, ease: expoOut }}
+              className="rounded-2xl border border-[hsl(var(--border))] bg-white/90 p-4 shadow-elev-lg backdrop-blur"
+            >
+              <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-[hsl(var(--muted-foreground))]">
+                <Wallet className="h-3.5 w-3.5 text-[hsl(var(--accent))]" />
+                Loan ready
+              </div>
+              <div className="mt-1 font-display text-xl">₹42L · 9.2% p.a.</div>
+            </motion.div>
+          </Float>
 
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -641,12 +889,14 @@ function StatsBand() {
             viewport={{ once: true, margin: "-10% 0px" }}
             transition={{ delay: i * 0.08, duration: 0.7, ease: expoOut }}
           >
-            <div className="font-display text-5xl font-700 text-[hsl(var(--foreground))] lg:text-6xl">
-              <CountUp to={s.v} prefix={s.prefix} suffix={s.suffix} format={s.format} />
-            </div>
-            <div className="mt-2 font-mono text-xs uppercase tracking-[0.25em] text-[hsl(var(--muted-foreground))]">
-              {s.l}
-            </div>
+            <Float amplitude={4} duration={6 + i * 0.4} delay={i * 0.3}>
+              <div className="font-display text-5xl font-700 text-[hsl(var(--foreground))] lg:text-6xl">
+                <CountUp to={s.v} prefix={s.prefix} suffix={s.suffix} format={s.format} />
+              </div>
+              <div className="mt-2 font-mono text-xs uppercase tracking-[0.25em] text-[hsl(var(--muted-foreground))]">
+                {s.l}
+              </div>
+            </Float>
           </motion.div>
         ))}
       </div>
@@ -716,6 +966,7 @@ function FiveSurfacesHorizontal() {
                 <Link
                   href={f.href}
                   className="mt-6 inline-flex items-center gap-2 text-sm font-medium underline-grow"
+                  data-cursor="hover"
                 >
                   Open {f.title} <ArrowUpRight className="h-4 w-4" />
                 </Link>
@@ -732,7 +983,10 @@ function FiveSurfacesHorizontal() {
               Begin your file in 90 seconds.
             </h3>
             <p className="mt-3 opacity-80">Profile-first onboarding fuels every other surface.</p>
-            <MagneticButton className="mt-10 inline-flex items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-6 py-3 text-sm font-medium text-[hsl(var(--accent-foreground))]">
+            <MagneticButton
+              data-cursor="hover"
+              className="mt-10 inline-flex items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-6 py-3 text-sm font-medium text-[hsl(var(--accent-foreground))]"
+            >
               <span>Start now</span>
               <ArrowUpRight className="h-4 w-4" />
             </MagneticButton>
@@ -748,7 +1002,7 @@ function FiveSurfacesHorizontal() {
   );
 }
 
-/* =============== JOURNEY — PINNED RAIL =============== */
+/* =============== JOURNEY — PINNED RAIL (with image cards) =============== */
 function JourneyPinned() {
   const ref = useRef<HTMLDivElement | null>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 60%", "end 40%"] });
@@ -790,7 +1044,7 @@ function JourneyPinned() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: "-20% 0px" }}
                 transition={{ duration: 0.8, ease: expoOut }}
-                className="grid grid-cols-[auto_1fr] items-start gap-8"
+                className="grid grid-cols-1 items-center gap-8 lg:grid-cols-[auto_1fr_auto]"
               >
                 <div className="font-mono text-4xl font-700 text-[hsl(var(--accent))] lg:text-6xl">
                   {s.n}
@@ -799,10 +1053,108 @@ function JourneyPinned() {
                   <h3 className="font-display text-3xl font-700">{s.t}</h3>
                   <p className="mt-3 text-lg text-[hsl(var(--muted-foreground))]">{s.d}</p>
                 </div>
+
+                {/* NEW — thumbnail with parallax + tilt */}
+                <TiltCard className="group relative h-44 w-full overflow-hidden rounded-2xl border border-[hsl(var(--border))] shadow-elev lg:h-36 lg:w-64">
+                  <motion.img
+                    src={s.img}
+                    alt={s.t}
+                    initial={{ scale: 1.15 }}
+                    whileInView={{ scale: 1.0 }}
+                    viewport={{ once: true, margin: "-15% 0px" }}
+                    transition={{ duration: 1.4, ease: expoOut }}
+                    className="h-full w-full object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+                  <div className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/85 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.25em] backdrop-blur">
+                    <Sparkles className="h-3 w-3 text-[hsl(var(--accent))]" />
+                    Step {s.n}
+                  </div>
+                </TiltCard>
               </motion.div>
             ))}
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* =============== NEW: DESTINATIONS MARQUEE =============== */
+function DestinationsMarquee() {
+  return (
+    <section
+      data-testid="destinations-marquee"
+      className="relative overflow-hidden border-y border-[hsl(var(--border))] bg-[hsl(var(--surface))] py-24"
+    >
+      <div className="mx-auto mb-12 max-w-[1400px] px-6 lg:px-10">
+        <div className="flex items-end justify-between gap-6">
+          <div>
+            <div className="font-mono text-xs uppercase tracking-[0.3em] text-[hsl(var(--muted-foreground))]">
+              <Globe2 className="mr-1.5 inline h-3.5 w-3.5 text-[hsl(var(--accent))]" />
+              Destinations served
+            </div>
+            <h2 className="mt-3 font-display text-[clamp(2rem,4vw,3.5rem)] font-700 leading-[0.95] tracking-tight">
+              <SplitTextReveal text="Six time zones." />
+              <br />
+              <span className="text-gradient-ink">
+                <SplitTextReveal text="One launch pad." delay={0.05} />
+              </span>
+            </h2>
+          </div>
+          <div className="hidden max-w-xs text-right text-sm text-[hsl(var(--muted-foreground))] lg:block">
+            From Oxford spires to Singapore skylines — every shortlist routes through one cockpit.
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="flex gap-6 whitespace-nowrap"
+        style={{ animation: "marquee 50s linear infinite" }}
+      >
+        {[...destinations, ...destinations].map((d, i) => (
+          <motion.div
+            key={i}
+            whileHover={{ y: -6, scale: 1.02 }}
+            transition={{ duration: 0.5, ease: expoOut }}
+            className="relative h-[300px] w-[460px] flex-none overflow-hidden rounded-3xl shadow-elev"
+          >
+            <img
+              src={d.img}
+              alt={d.city}
+              className="h-full w-full object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-[1.06]"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+            <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between text-white">
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.3em] opacity-80">
+                  <MapPin className="mr-1 inline h-3 w-3" />
+                  {d.country}
+                </div>
+                <div className="mt-1 font-display text-3xl font-700 tracking-tight">{d.city}</div>
+              </div>
+              <div className="rounded-full bg-white/15 px-3 py-1 font-mono text-[10px] uppercase tracking-widest backdrop-blur">
+                Live admits
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <div
+        className="mt-6 flex gap-6 whitespace-nowrap opacity-60"
+        style={{ animation: "marquee 70s linear infinite reverse" }}
+      >
+        {[...destinations, ...destinations].map((d, i) => (
+          <span
+            key={`txt-${i}`}
+            className="font-display text-2xl tracking-[0.35em] text-[hsl(var(--muted-foreground))]"
+          >
+            {d.city} · {d.country} ·
+          </span>
+        ))}
       </div>
     </section>
   );
@@ -830,7 +1182,7 @@ function TeamSection() {
             </h2>
           </div>
           <p className="max-w-sm text-[hsl(var(--muted-foreground))]">
-            A tight, vertically-stacked team shipping every surface from the Oracle's math to the
+            A tight, vertically-stacked team shipping every surface — from the Oracle's math to the
             last pixel of the curtain.
           </p>
         </div>
@@ -875,6 +1227,7 @@ function TeamSection() {
                     <Link
                       href={m.link}
                       className="inline-flex items-center gap-2 text-sm font-medium underline-grow"
+                      data-cursor="hover"
                     >
                       <Linkedin className="h-4 w-4" /> Connect
                     </Link>
@@ -1096,9 +1449,79 @@ function EditorialCampus() {
           <Link
             href="/dashboard"
             className="mt-8 inline-flex items-center gap-2 text-sm font-medium text-white underline-grow"
+            data-cursor="hover"
           >
             Explore dashboard <ArrowUpRight className="h-4 w-4" />
           </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =============== NEW: SCRAPBOOK COLLAGE =============== */
+function ScrapbookCollage() {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const y1 = useTransform(scrollYProgress, [0, 1], ["10%", "-10%"]);
+  const y2 = useTransform(scrollYProgress, [0, 1], ["-8%", "8%"]);
+  const y3 = useTransform(scrollYProgress, [0, 1], ["6%", "-6%"]);
+  const ys = [y1, y2, y3, y1, y2, y3];
+
+  return (
+    <section ref={ref} data-testid="scrapbook-collage" className="relative overflow-hidden py-36">
+      <div className="mx-auto max-w-[1400px] px-6 lg:px-10">
+        <div className="mb-16 grid grid-cols-1 items-end gap-8 lg:grid-cols-[1fr_auto]">
+          <div>
+            <div className="font-mono text-xs uppercase tracking-[0.3em] text-[hsl(var(--muted-foreground))]">
+              <Camera className="mr-1.5 inline h-3.5 w-3.5 text-[hsl(var(--accent))]" />
+              Scrapbook · 2025
+            </div>
+            <h2 className="mt-3 font-display text-[clamp(2rem,4vw,3.5rem)] font-700 leading-[0.95] tracking-tight">
+              <SplitTextReveal text="The receipts," />
+              <br />
+              <span className="text-gradient-ink">
+                <SplitTextReveal text="not the brochures." delay={0.05} />
+              </span>
+            </h2>
+          </div>
+          <p className="max-w-sm text-[hsl(var(--muted-foreground))]">
+            Polaroids from students who launched their files with us — convocations, first studios,
+            late nights at the Bodleian.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-6">
+          {collage.map((c, i) => (
+            <motion.figure
+              key={i}
+              style={{ y: ys[i % ys.length] }}
+              initial={{ opacity: 0, y: 60, rotate: c.rot * 1.6 }}
+              whileInView={{ opacity: 1, y: 0, rotate: c.rot }}
+              whileHover={{ rotate: 0, scale: 1.04, zIndex: 10 }}
+              viewport={{ once: true, margin: "-10% 0px" }}
+              transition={{ duration: 0.9, ease: expoOut, delay: i * 0.07 }}
+              className={[
+                "group relative aspect-[3/4] overflow-hidden rounded-md border border-white bg-white p-2 shadow-elev-lg",
+                i % 2 === 0 ? "lg:translate-y-6" : "lg:-translate-y-6",
+                i === 1 ? "lg:col-span-2" : "",
+              ].join(" ")}
+            >
+              <div className="relative h-[82%] w-full overflow-hidden rounded-sm">
+                <img
+                  src={c.img}
+                  alt={c.caption}
+                  className="h-full w-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent" />
+              </div>
+              <figcaption className="mt-2 px-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">
+                {c.caption}
+              </figcaption>
+              <div className="pointer-events-none absolute -right-2 -top-2 h-6 w-12 rotate-12 bg-[hsl(var(--accent-soft))] opacity-70" />
+            </motion.figure>
+          ))}
         </div>
       </div>
     </section>
@@ -1132,7 +1555,10 @@ function ClosingCTA() {
             <WordReveal text="Walk away sanctioned." delay={0.16} />
           </h2>
           <div className="mt-10 flex flex-wrap gap-4">
-            <MagneticButton className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-7 py-4 text-sm font-medium text-[hsl(var(--primary-foreground))] shadow-elev hover:shadow-elev-lg">
+            <MagneticButton
+              data-cursor="hover"
+              className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-7 py-4 text-sm font-medium text-[hsl(var(--primary-foreground))] shadow-elev hover:shadow-elev-lg"
+            >
               <span>Start your file</span>
               <ArrowUpRight className="h-4 w-4" />
             </MagneticButton>
@@ -1181,17 +1607,20 @@ export default function Home() {
   return (
     <PageShell>
       <PageEnter>
+        <BlobCursor />
         <ScrollProgressRail />
         <HeroSection />
         <LogoMarqueeBand />
         <StatsBand />
         <FiveSurfacesHorizontal />
         <JourneyPinned />
+        <DestinationsMarquee />
         <TeamSection />
         <ManifestoBand />
         <EditorialSplit />
         <Testimonials />
         <EditorialCampus />
+        <ScrapbookCollage />
         <ClosingCTA />
       </PageEnter>
     </PageShell>

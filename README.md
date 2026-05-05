@@ -1,77 +1,85 @@
-<div align="center">
-  <img src="https://img.shields.io/badge/StudyLaunch-Neon_Glassmorphism-6d28d9?style=for-the-badge&logo=react" alt="StudyLaunch Badge"/>
-  <h1>🚀 StudyLaunch</h1>
-  <p><strong>The Next-Generation SaaS Platform for Elite University Admissions</strong></p>
-</div>
+# StudyLaunch
 
-<br />
+**The Next-Generation SaaS Platform for Elite University Admissions**
 
-<div align="center">
+## Overview
 
-[![Next.js](https://img.shields.io/badge/Powered%20by-Next.js%2014-black?style=flat-square&logo=next.js)](#)
-[![TailwindCSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-38B2AC?style=flat-square&logo=tailwind-css)](#)
-[![Framer Motion](https://img.shields.io/badge/Animations-Framer%20Motion-FF0055?style=flat-square&logo=framer)](#)
+StudyLaunch is an enterprise-grade ecosystem tailored for candidates navigating top-tier university admissions and funding. Built with Next.js App Router, the platform provides hyper-personalized matching, probabilistic admission scoring, and precise educational financing models, delivering a deterministic processing experience.
 
-</div>
+## Features & Modules
 
----
+- **Navigator (Discovery):** AI-matched shortlist tuned to profile, budget, and goals.
+- **Oracle (Probability):** Real-time admit probability with explainable factors and transparency.
+- **LoanSense (Financing):** Co-signer-free loan options, EMI modeling, and DLG-ready offers.
+- **Dashboard (Command):** Application tracking, deadline management, and secure document vault.
+- **Essay Co-Pilot (Craft):** Statement of purpose drafting environment that preserves the applicant's unique voice.
 
-## 🌟 Overview
+## Architecture & Data Flow
 
-StudyLaunch isn't just an application—it's a comprehensive **AI-driven SaaS ecosystem** tailored for elite candidates navigating top-tier university admissions and funding. Built exclusively with **Next.js App Router**, hyper-personalized matching UI, and enterprise-grade animated components natively running on the browser, it eliminates the guesswork out of the application journey.
+### Conceptual DFD
 
-### Why StudyLaunch?
-1. **Unparalleled UI/UX:** Built meticulously with a modern *neon glassmorphism* aesthetic, delivering a premium, immersive client experience.
-2. **Deterministic Processing:** Advanced state management and deterministic UI feedback strictly handled on the frontend.
-3. **Deep Integrations:** Next.js Server & Client Components working symbiotically to deliver ultra-low latency routing and dynamic transitions.
+Below is the conceptual Data Flow Diagram representing the core mechanisms of StudyLaunch.
 
----
-
-## 💎 Core SaaS Modules
-
-An architectural symphony orchestrating these five independent engines:
-
-### 🧭 Navigator
-Bespoke academic profiling. Match against 12,000+ elite programs based on budget constraints, GPA, and work experience.
-
-### 🔮 Oracle
-Predictive Admission dashboard. Evaluate your exact admit probability leveraging strict statistical rubric overlays mapped against historic data modeling.
-
-### 💰 LoanSense
-Embedded financial analytics. Get precise tuition coverage models, EMI scenarios, and real-time conversion structures.
-
-### 📄 Essay Co-Pilot
-Anti-homogenization writing environment. Draft, refine, and pressure-test statements of purpose entirely within the browser, preserving applicant voice parameters dynamically.
-
-### 🎓 The Loop
-Premium insights feed connecting candidates directly with vetted alumni webinars, articles, and mentorship networking.
-
----
-
-## ⚙️ Installation & Usage
-
-### 0. Prerequisites
-- **Node.js** `v18+` environment over `pnpm` or `npm`.
-
-### 1. Launch Strategy
-Deploy the enterprise frontend stack instantly.
-
-```bash
-# Clone Repository
-git clone https://github.com/your-username/StudyLaunch.git
-cd StudyLaunch
-
-# Install Dependencies
-npm install
-
-# Launch Ecosystem
-npm run dev
+```mermaid
+%%{init: {'theme': 'forest', 'look': 'handDrawn'}}%%
+flowchart TD
+    A[Applicant Profile] --> B{StudyLaunch CoreEngine}
+    B -->|Academic Data| C[Navigator Module]
+    B -->|Financial Data| D[LoanSense Processing]
+    C --> E[Oracle Probability]
+    D --> F[Sanctioned Loan Offers]
+    E --> G[Unified Student Workspace]
+    F --> G
+    H[Essay Co-Pilot Layer] --> G
 ```
 
-* `http://localhost:3000` - Dashboard & Operations Panel
+### System Workflows
 
----
+*Data Flow Diagrams detailing user interactions and algorithmic pipelines.*
 
-<div align="center">
-  <i>Engineered for the absolute pinnacle of technological orchestration. Built locally, scaled globally.</i>
-</div>
+![System Feature DFD 1](./app/assets/dfds/features-exp1.png)
+![System Feature DFD 2](./app/assets/dfds/features-exp2.png)
+![System Feature DFD 3](./app/assets/dfds/features-exp3.png)
+![Sensor-Driven Perception](./app/assets/dfds/Sensor-Driven%20AI%20Perception-2026-05-04-195900.png)
+
+## Documentation
+
+- **Product Requirements Document (PRD):** Comprehensive specifications outlining feature sets, compliance standards (RBI & DPDP), and the deterministic modeling approaches used in our core AI engines.
+- **Prototype Guides:** Live prototype documentation detailing the implementation of UI transitions, component orchestration, and native browser optimizations for the frontend architecture.
+
+## Quick Setup Guide
+
+### Prerequisites
+- Node.js v18+ environment
+- Package manager (npm or pnpm)
+
+### Installation & Launch
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/StudyLaunch.git
+   cd StudyLaunch
+   ```
+
+2. Install development dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Launch the operational workspace:
+   ```bash
+   npm run dev
+   ```
+
+The dashboard and primary interfaces will be active at `http://localhost:3000`.
+
+## Team
+
+StudyLaunch is actively maintained and built by our core engineering group.
+
+| Anshuman Pathak | Gaurav Shahi | Deepanshu Dwivedi |
+| :---: | :---: | :---: |
+| <img src="./public/assets/team/anshuman.jpg" width="150" height="150" alt="Anshuman Pathak"> | <img src="./public/assets/team/GauravShahi_.jpeg" width="150" height="150" alt="Gaurav Shahi"> | <img src="./public/assets/team/deepanshu.jpeg" width="150" height="150" alt="Deepanshu Dwivedi"> |
+| Lead Frontend / Gen-AI | Full-Stack / Platform & API | SaaS Growth / Machine Learning |
+
+*Engineered for the absolute pinnacle of technological orchestration. Built locally, scaled globally.*
