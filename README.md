@@ -3,6 +3,7 @@
 **The Next-Generation SaaS Platform for Elite University Admissions**
 
 View the Prototype: https://tensorx-studylaunch.vercel.app/
+Video Pitch: https://youtu.be/pHVzMmb6RXA
 
 ## Overview
 
